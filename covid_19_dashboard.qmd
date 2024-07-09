@@ -1,0 +1,485 @@
+---
+title: "Covid-19 dashboard"
+format: dashboard
+---
+
+```{r}
+# Load Packages
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load(tidyverse, lubridate, here, rio,
+               bslib, bsicons, shiny, rnaturalearth, plotly, countrycode, htmltools, reactable, ggspatial, colorspace, dplyr, scales)
+```
+
+```{r}
+# Load data
+
+covid_numbers <- read.csv(here::here("data/WHO_COVID19_global_data.csv"),
+                        na.strings = c(' ', '', 'NA','unknown'))
+
+covid_numbers <- covid_numbers %>% 
+  filter(Cumulative_cases > 0)
+```
+
+```{r}
+#cumulative cases and deaths indicators
+last_report <- covid_numbers %>% 
+  group_by(Country) %>% 
+  summarise(
+    Date_reported = max(Date_reported, na.rm = TRUE)
+  )
+
+recent_data <- last_report %>% 
+  inner_join(covid_numbers, by = c("Country", "Date_reported"))
+
+total_cum_cases <- recent_data %>% 
+  #group_by(Date_reported) %>% 
+  summarize(Total_cum_cases= sum(Cumulative_cases))
+
+total_cum_cases$Total_cum_cases <-comma(total_cum_cases$Total_cum_cases)
+
+total_cum_deaths <- recent_data %>% 
+  #group_by(Date_reported) %>% 
+  summarize(Total_cum_deaths= sum(Cumulative_deaths))
+
+total_cum_deaths$Total_cum_deaths <-comma(total_cum_deaths$Total_cum_deaths)
+
+```
+
+```{r}
+
+# Map of cumulative cases and deaths
+country_shapes <- rnaturalearth::ne_countries()
+
+
+cum_cases_map <- left_join(country_shapes, recent_data,
+                           by = c("iso_a2" = "Country_code")) %>% 
+  mutate (tooltip_label = paste(Country, Cumulative_cases, sep = ": ")) %>% 
+  ggplot()+
+  geom_sf(aes(fill = Cumulative_cases, text = tooltip_label))+
+  scale_fill_continuous_sequential(palette="PuBu") +
+  ggtitle("Cumulative cases")+
+  theme_void()+
+  theme(legend.position = "none")
+
+cum_cases_map_ggplotly <- ggplotly(cum_cases_map, tooltip = "text")
+
+cum_deaths_map <- left_join(country_shapes, recent_data,
+                           by = c("iso_a2" = "Country_code")) %>% 
+  mutate (tooltip_label = paste(Country, Cumulative_deaths, sep = ": ")) %>% 
+  ggplot()+
+  geom_sf(aes(fill = Cumulative_deaths, text = tooltip_label))+
+  scale_fill_continuous_sequential(palette="YlOrRd") +
+  ggtitle("Cumulative deaths")+
+  theme_void()+
+  theme(legend.position = "none")
+
+cum_deaths_map_ggplotly <- ggplotly(cum_deaths_map, tooltip = "text")
+
+
+```
+
+
+
+
+
+```{r}
+#Plot of cases and deaths for 2020
+
+covid_numbers_clean <- covid_numbers %>% 
+  mutate(Date_reported = ymd(Date_reported)) 
+
+
+covid_numbers_clean_2020 <- covid_numbers_clean %>% 
+  filter(Date_reported >= as.Date ('2020-01-01') & Date_reported <= as.Date ('2020-12-31'))
+
+weekly_numbers_2020 <- covid_numbers_clean_2020 %>% 
+  group_by(week = week(Date_reported)) %>% 
+  summarise(
+    cases=sum(New_cases, na.rm = TRUE),
+    deaths = sum(New_deaths, na.rm = TRUE)
+  )
+  
+
+plot_cases_2020 <- ggplot(data = weekly_numbers_2020,
+       mapping = aes(x = week,
+                     y = cases)) +
+  geom_col(fill= "#79B5E3")+
+  scale_y_continuous(labels=function(n){format(n, scientific = FALSE, big.mark = ",")})+
+  ggtitle("Cases")+
+  labs (x = "Week",
+        y = "Weekly cases")
+
+interactive_plot_cases_2020 <- ggplotly(plot_cases_2020, tooltip = c("x", "y"))
+
+plot_deaths_2020 <- ggplot(data = weekly_numbers_2020,
+       mapping = aes(x = week,
+                     y = deaths)) +
+  geom_col(fill= "#F48373")+
+  scale_y_continuous(labels=function(n){format(n, scientific = FALSE, big.mark = ",")})+
+  ggtitle("Deaths")+
+  labs (x = "Week",
+        y = "Weekly deaths")
+
+interactive_plot_deaths_2020 <- ggplotly(plot_deaths_2020, tooltip = c("x", "y"))
+
+```
+
+
+
+```{r}
+#Plot of cases and deaths for 2021
+
+covid_numbers_clean_2021 <- covid_numbers_clean %>% 
+  filter(Date_reported >= as.Date ('2021-01-01') & Date_reported <= as.Date ('2021-12-31'))
+
+weekly_numbers_2021 <- covid_numbers_clean_2021 %>% 
+  group_by(week = week(Date_reported)) %>% 
+  summarise(
+    cases=sum(New_cases, na.rm = TRUE),
+    deaths = sum(New_deaths, na.rm = TRUE)
+  )
+  
+
+plot_cases_2021 <- ggplot(data = weekly_numbers_2021,
+       mapping = aes(x = week,
+                     y = cases)) +
+  geom_col(fill= "#79B5E3")+
+  scale_y_continuous(labels=function(n){format(n, scientific = FALSE, big.mark = ",")})+
+  ggtitle("Cases")+
+  labs (x = "Week",
+        y = "Weekly cases")
+
+interactive_plot_cases_2021 <- ggplotly(plot_cases_2021, tooltip = c("x", "y"))
+
+plot_deaths_2021 <- ggplot(data = weekly_numbers_2021,
+       mapping = aes(x = week,
+                     y = deaths)) +
+  geom_col(fill= "#F48373")+
+  scale_y_continuous(labels=function(n){format(n, scientific = FALSE, big.mark = ",")})+
+  ggtitle("Deaths")+
+  labs (x = "Week",
+        y = "Weekly deaths")
+
+interactive_plot_deaths_2021 <- ggplotly(plot_deaths_2021, tooltip = c("x", "y"))
+```
+
+
+```{r}
+#Plot of cases and deaths for 2022
+covid_numbers_clean_2022 <- covid_numbers_clean %>% 
+  filter(Date_reported >= as.Date ('2022-01-01') & Date_reported <= as.Date ('2022-12-31'))
+
+weekly_numbers_2022 <- covid_numbers_clean_2022 %>% 
+  group_by(week = week(Date_reported)) %>% 
+  summarise(
+    cases=sum(New_cases, na.rm = TRUE),
+    deaths = sum(New_deaths, na.rm = TRUE)
+  )
+  
+
+plot_cases_2022 <- ggplot(data = weekly_numbers_2022,
+       mapping = aes(x = week,
+                     y = cases)) +
+  geom_col(fill= "#79B5E3")+
+  scale_y_continuous(labels=function(n){format(n, scientific = FALSE, big.mark = ",")})+
+  ggtitle("Cases")+
+  labs (x = "Week",
+        y = "Weekly cases")
+
+interactive_plot_cases_2022 <- ggplotly(plot_cases_2022, tooltip = c("x", "y"))
+
+plot_deaths_2022 <- ggplot(data = weekly_numbers_2022,
+       mapping = aes(x = week,
+                     y = deaths)) +
+  geom_col(fill= "#F48373")+
+  scale_y_continuous(labels=function(n){format(n, scientific = FALSE, big.mark = ",")})+
+  ggtitle("Deaths")+
+  labs (x = "Week",
+        y = "Weekly deaths")
+
+interactive_plot_deaths_2022 <- ggplotly(plot_deaths_2022, tooltip = c("x", "y"))
+
+```
+
+```{r}
+#Plot of cases and deaths for 2023
+
+covid_numbers_clean_2023 <- covid_numbers_clean %>% 
+  filter(Date_reported >= as.Date ('2023-01-01') & Date_reported <= as.Date ('2023-12-31'))
+
+weekly_numbers_2023 <- covid_numbers_clean_2023 %>% 
+  group_by(week = week(Date_reported)) %>% 
+  summarise(
+    cases=sum(New_cases, na.rm = TRUE),
+    deaths = sum(New_deaths, na.rm = TRUE)
+  )
+  
+
+plot_cases_2023 <- ggplot(data = weekly_numbers_2023,
+       mapping = aes(x = week,
+                     y = cases)) +
+  geom_col(fill= "#79B5E3")+
+  scale_y_continuous(labels=function(n){format(n, scientific = FALSE, big.mark = ",")})+
+  ggtitle("Cases")+
+  labs (x = "Week",
+        y = "Weekly cases")
+
+interactive_plot_cases_2023 <- ggplotly(plot_cases_2023, tooltip = c("x", "y"))
+
+plot_deaths_2023 <- ggplot(data = weekly_numbers_2023,
+       mapping = aes(x = week,
+                     y = deaths)) +
+  geom_col(fill= "#F48373")+
+  scale_y_continuous(labels=function(n){format(n, scientific = FALSE, big.mark = ",")})+
+  ggtitle("Deaths")+
+  labs (x = "Week",
+        y = "Weekly deaths")
+
+interactive_plot_deaths_2023 <- ggplotly(plot_deaths_2023, tooltip = c("x", "y"))
+
+```
+
+
+```{r}
+#Plot of cases and deaths for 2024
+covid_numbers_clean_2024 <- covid_numbers_clean %>% 
+  filter(Date_reported >= as.Date ('2024-01-01') & Date_reported <= as.Date ('2024-12-31'))
+
+weekly_numbers_2024 <- covid_numbers_clean_2024 %>% 
+  group_by(week = week(Date_reported)) %>% 
+  summarise(
+    cases=sum(New_cases, na.rm = TRUE),
+    deaths = sum(New_deaths, na.rm = TRUE)
+  )
+  
+
+plot_cases_2024 <- ggplot(data = weekly_numbers_2024,
+       mapping = aes(x = week,
+                     y = cases)) +
+  geom_col(fill= "#79B5E3")+
+  scale_y_continuous(labels=function(n){format(n, scientific = FALSE, big.mark = ",")})+
+  ggtitle("Cases")+
+  labs (x = "Week",
+        y = "Weekly cases")
+
+interactive_plot_cases_2024 <- ggplotly(plot_cases_2024, tooltip = c("x", "y"))
+
+plot_deaths_2024 <- ggplot(data = weekly_numbers_2024,
+       mapping = aes(x = week,
+                     y = deaths)) +
+  geom_col(fill= "#F48373")+
+  scale_y_continuous(labels=function(n){format(n, scientific = FALSE, big.mark = ",")})+
+  ggtitle("Deaths")+
+  labs (x = "Week",
+        y = "Weekly deaths")
+
+interactive_plot_deaths_2024 <- ggplotly(plot_deaths_2024, tooltip = c("x", "y"))
+
+```
+
+
+```{r}
+#Time series maps
+
+
+covid_numbers_clean_full <- covid_numbers %>% 
+  mutate(Date_reported = ymd(Date_reported)) 
+
+  covid_numbers_clean_iso3 <-left_join(covid_numbers_clean_full, country_shapes, by = c("Country_code" = "iso_a2" ))
+  
+  yearly_numbers <- covid_numbers_clean_iso3 %>% 
+    group_by(year = year(Date_reported), Country, adm0_a3) %>% 
+    summarise(
+      cases = sum(New_cases, na.rm = TRUE),
+      deaths = sum(New_deaths, na.rm = TRUE)
+    )
+
+
+
+dynamic_map_cases <- yearly_numbers %>% 
+  plot_geo(width = 940) %>% 
+  add_trace(
+    z = ~ cases,
+    color = ~ cases,
+    locations = ~adm0_a3,
+    text = ~Country,
+    frame = ~year, colors = "PuBu"
+  ) %>% 
+  colorbar(title = NULL)
+
+dynamic_map_deaths <- yearly_numbers %>% 
+  plot_geo(width = 940) %>% 
+  add_trace(
+    z = ~ deaths,
+    color = ~ deaths,
+    locations = ~adm0_a3,
+    text = ~Country,
+    frame = ~year, colors = "YlOrRd"
+  ) %>% 
+  colorbar(title = NULL)
+```
+
+
+# Home
+
+## Row 1 {height=20%}
+
+```{r}
+value_box(
+  title = "Cumulative cases",
+  value = total_cum_cases,
+  showcase = bsicons::bs_icon("file-person"),
+  theme = value_box_theme(bg="#79B5E3")
+)
+```
+```{r}
+value_box(
+  title = "Cumulative deaths",
+  value = total_cum_deaths,
+  showcase = bsicons::bs_icon("file-person-fill"),
+  theme = value_box_theme(bg="#F48373")
+)
+```
+
+## Row 2 {height = 80%}
+
+### {.tabset}
+
+#### Map of cases
+
+```{r}
+
+cum_cases_map_ggplotly
+```
+
+
+#### Map of deaths
+
+```{r}
+cum_deaths_map_ggplotly
+```
+
+### {.tabset}
+
+#### 2024
+
+##### 
+
+```{r}
+interactive_plot_cases_2024
+```
+
+#####
+
+
+```{r}
+interactive_plot_deaths_2024
+```
+#### 2023
+
+##### 
+
+```{r}
+interactive_plot_cases_2023
+```
+
+#####
+
+
+```{r}
+interactive_plot_deaths_2023
+```
+
+#### 2022
+##### 
+
+```{r}
+interactive_plot_cases_2022
+```
+
+#####
+
+
+```{r}
+interactive_plot_deaths_2022
+```
+#### 2021
+##### 
+
+```{r}
+interactive_plot_cases_2021
+```
+
+#####
+
+
+```{r}
+interactive_plot_deaths_2021
+```
+
+#### 2020
+##### 
+
+```{r}
+interactive_plot_cases_2020
+```
+
+#####
+
+
+```{r}
+interactive_plot_deaths_2020
+```
+
+# Time-series map
+
+## {.tabset}
+
+### Cases
+```{r}
+dynamic_map_cases
+```
+
+### Deaths
+
+```{r}
+dynamic_map_deaths
+```
+
+# Data download
+
+The data used in this dashboard is shown below and can be downloaded as a CSV.
+
+```{r}
+
+library(htmltools, reactable)
+
+htmltools::browsable(
+  tagList(
+    reactable(covid_numbers,
+              elementId= "covid-data",
+              searchable = T,
+              filterable = T),
+    tags$button("Download as CSV",
+                onclick =
+                  "Reactable.downloadDataCSV('covid-data')")
+  )
+)
+
+```
+
+
+
+# About
+
+This dashboard uses the COVID-19 data reported to the World Health Organization (WHO), available at: 
+https://data.who.int/dashboards/covid19/cases.
+
+
+Founded in 1948, WHO is the United Nations agency that connects nations, partners and people to promote health, keep the world safe and serve the vulnerable – so everyone, everywhere can attain the highest level of health. 
+
+WHO leads global efforts to expand universal health coverage. We direct and coordinate the world’s response to health emergencies. And we promote healthier lives – from pregnancy care through old age. Our Triple Billion targets outline an ambitious plan for the world to achieve good health for all using science-based policies and programmes. 
+
+Watch the video on how the COVID-19 virus is transmitted
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/oqFn6AHoJZQ?si=Q08kO2DO_C4MV_Kp" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
